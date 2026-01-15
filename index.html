@@ -1,40 +1,128 @@
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+
+const char* ssid = "Arsenal";
+const char* password = "Arsenal11";
+
+ESP8266WebServer server(80);
+const int ledPin = LED_BUILTIN;
+bool ledState = false;
+
+// ================== HANDLERS ==================
+
+void handleRoot() {
+  String html = R"rawliteral(
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reynard Azriel Sitorus | Network Engineer</title>
-  <style>
-    :root {
-      --bg: #0f172a;
-      --card: #020617;
-      --accent: #38bdf8;
-      --text: #e5e7eb;
-      --muted: #94a3b8;
-    }
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    body {
-      background: linear-gradient(135deg, #020617, #0f172a);
-      color: var(--text);
-      min-height: 100vh;
-    }
-    header {
-      padding: 3rem 1.5rem;
-      text-align: center;
-    }
-    header h1 {
-      font-size: 2.5rem;
-      color: var(--accent);
-      margin-bottom: 0.5rem;
-    }
-    header p {
-      color: var(--muted);
-      font-size: 1.1rem;
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRAKTIK ESP8266 SMKS 1 BARUNAWATI</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #1e3c72, #2a5298);
+  margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh;
+}
+.card {
+  background: white; padding: 30px; border-radius: 12px; width: 320px; text-align: center;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+h1 { font-size: 20px; margin-bottom: 5px; }
+h2 { font-size: 14px; color: #666; margin-bottom: 20px; }
+.status {
+  font-size: 18px; margin: 15px 0; font-weight: bold;
+}
+.on { color: #28a745; }
+.off { color: #dc3545; }
+.btn {
+  padding: 12px 25px; margin: 10px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;
+}
+.btn-on { background: #28a745; color: white; }
+.btn-off { background: #dc3545; color: white; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>PRAKTIK ESP8266</h1>
+  <h2>SMKS 1 BARUNAWATI</h2>
+  <div>Status LED: <span id="status" class="status off">OFF</span></div>
+  <button class="btn btn-on" onclick="setLed('on')">NYALAKAN</button>
+  <button class="btn btn-off" onclick="setLed('off')">MATIKAN</button>
+</div>
+
+<script>
+function setLed(state) {
+  fetch('/' + state)
+    .then(() => updateStatus());
+}
+
+function updateStatus() {
+  fetch('/status')
+    .then(r => r.text())
+    .then(s => {
+      const el = document.getElementById('status');
+      el.textContent = s;
+      el.className = 'status ' + (s === 'ON' ? 'on' : 'off');
+    });
+}
+
+setInterval(updateStatus, 2000);
+updateStatus();
+</script>
+</body>
+</html>
+)rawliteral";
+
+  server.send(200, "text/html", html);
+}
+
+void handleOn() {
+  digitalWrite(ledPin, LOW); // aktif LOW
+  ledState = true;
+  server.send(200, "text/plain", "ON");
+}
+
+void handleOff() {
+  digitalWrite(ledPin, HIGH);
+  ledState = false;
+  server.send(200, "text/plain", "OFF");
+}
+
+void handleStatus() {
+  server.send(200, "text/plain", ledState ? "ON" : "OFF");
+}
+
+// ================== SETUP & LOOP ==================
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, HIGH);
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nWiFi connected");
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+
+  server.on("/", handleRoot);
+  server.on("/on", handleOn);
+  server.on("/off", handleOff);
+  server.on("/status", handleStatus);
+
+  server.begin();
+  Serial.println("Web server started");
+}
+
+void loop() {
+  server.handleClient();
+}      font-size: 1.1rem;
     }
     section {
       max-width: 1000px;
